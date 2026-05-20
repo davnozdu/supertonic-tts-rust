@@ -1,18 +1,23 @@
-//! ORT inference engine — stub for MVP.
+//! ORT inference engine — Supertonic v3 pipeline.
 //!
-//! The full Supertonic v3 inference logic (Encoder / DurationPredictor /
-//! Decoder / Diffusion) lives upstream in supertonic-android/rust/src/.
-//! We'll port + adapt it in the next step once the scaffold is verified
-//! to compile and CI is green.
+//! Ported from the upstream fork (supertonic-android/rust). The actual
+//! per-stage inference (text encoder → duration predictor → diffusion →
+//! vocoder) lives in `inference.rs`; this file is the public face of the
+//! engine to JNI and bundles thermal-aware scheduling.
 
-#![allow(dead_code)]
+pub mod inference;
+pub mod thermal;
 
-pub struct Engine {
-    // ORT session, voice style cache, sample rate, ...
-}
+pub use inference::{
+    load_and_mix_voice_styles, load_text_to_speech, load_voice_style, Style, TextToSpeech,
+};
+pub use thermal::{SocClass, UnifiedThermalManager};
 
-impl Engine {
-    pub fn init(_model_path: &str, _lib_path: &str) -> anyhow::Result<Self> {
-        Err(anyhow::anyhow!("engine not yet implemented in MVP scaffold"))
-    }
+/// Top-level handle held by the JNI bridge. Boxing this and returning
+/// the raw pointer as a `jlong` lets us hold the (large) ORT sessions
+/// alive across multiple `synthesize` calls.
+pub struct SupertonicEngine {
+    pub tts: TextToSpeech,
+    pub thermal: UnifiedThermalManager,
+    pub last_rtf: f32,
 }

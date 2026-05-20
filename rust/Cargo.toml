@@ -1,10 +1,10 @@
 [package]
 name = "supertonic-rust"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 [features]
-default = []
+default = ["xnnpack"]
 xnnpack = ["ort/xnnpack"]
 
 [dependencies]
@@ -39,6 +39,9 @@ jni = "0.21"
 android_logger = "0.13"
 log = "0.4"
 once_cell = "1.19"
+
+# CPU affinity (used by thermal.rs to pin worker threads to perf cores)
+libc = "0.2"
 
 [lib]
 name = "supertonic_rust"

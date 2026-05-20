@@ -5,12 +5,14 @@ import android.util.Log
 /**
  * Thin Kotlin facade over the Rust JNI surface.
  *
- * The new architecture (vs. the upstream fork) is: Kotlin owns Android
- * lifecycle + AudioTrack only, Rust does all text processing and ORT
- * inference. So this class is intentionally minimal — one `external fun`
- * per JNI symbol declared in `rust/src/lib.rs`, plus a static `init {}`
- * block that loads both native libraries (onnxruntime first because the
- * Rust crate dynamically links against it).
+ * The architecture (vs. the upstream fork): Kotlin owns Android lifecycle
+ * and AudioTrack, Rust owns all text processing and ORT inference. So
+ * this class is intentionally minimal — one `external fun` per JNI symbol
+ * exported by `rust/src/lib.rs`.
+ *
+ * The static init block loads `libonnxruntime.so` first because the Rust
+ * crate uses ORT's `load-dynamic` feature and resolves the runtime via
+ * the dynamic linker at session-build time.
  */
 object SupertonicRust {
 
@@ -40,38 +42,77 @@ object SupertonicRust {
     external fun loadAccentDictionary(path: String): Boolean
 
     /**
-     * Initialise the inference engine. modelPath is the directory holding
-     * the ONNX files; libPath is the absolute path to libonnxruntime.so
-     * unpacked from our jniLibs. Returns a handle (0 on failure).
+     * Initialise the inference engine. `modelPath` is the directory
+     * holding the ONNX files plus tts.json/unicode_indexer.json;
+     * `libPath` is the absolute path to libonnxruntime.so. Returns a
+     * handle (0 on failure).
      */
-    external fun initEngine(modelPath: String, libPath: String): Long
+    external fun initEngine(
+        modelPath: String,
+        libPath: String,
+        ortThreads: Int,
+        xnnThreads: Int
+    ): Long
 
     /**
-     * Runs the text pipeline (yofication / lexicon / numbers / accent
-     * dict) and returns the normalised string. Used by both the synthesis
-     * code path and the planned diagnostic UI.
+     * Run the text pipeline (yofication for now; lexicon / numbers /
+     * accent dict to land later) and return the normalised string.
      */
     external fun processText(text: String): String
 
     /**
-     * Stub for streaming synthesis. The real call will deliver PCM chunks
-     * back via a callback parameter; for the MVP scaffold it returns an
-     * empty byte array so the rest of the code paths compile.
+     * Streaming synthesis. PCM chunks are delivered to `callback` via
+     * `notifyAudioChunk(byte[])`; progress through `notifyProgress(int,
+     * int)`; cancellation is polled via `isCancelled(): Boolean`. The
+     * return value is the full PCM (16-bit LE mono) concatenated, for
+     * callers that prefer the bulk path.
      */
     external fun synthesize(
+        callback: Any,
         engine: Long,
         text: String,
-        voicePath: String,
+        lang: String,
+        stylePath: String,
         speed: Float,
-        steps: Int
+        bufferSeconds: Float,
+        steps: Int,
+        gain: Float
     ): ByteArray
 
+    /** PCM sample rate of the loaded model (24000 if engine is null). */
+    external fun getSampleRate(engine: Long): Int
+
+    /** SoC class: 0 low / 1 mid / 2 high / 3 flagship; -1 if null engine. */
+    external fun getSocClass(engine: Long): Int
+
+    /** Reset thermal / RTF averages. */
+    external fun reset(engine: Long)
+
+    /** True if XNNPACK execution provider was compiled in. */
+    external fun isXnnpackEnabled(): Boolean
+
+    /** Drop ORT sessions and free native memory. */
+    external fun close(engine: Long)
+
     @Synchronized
-    fun ensureEngineInitialised(modelPath: String, libPath: String): Boolean {
+    fun ensureEngineInitialised(
+        modelPath: String,
+        libPath: String,
+        ortThreads: Int = 2,
+        xnnThreads: Int = 2
+    ): Boolean {
         if (engineHandle != 0L) return true
-        engineHandle = initEngine(modelPath, libPath)
+        engineHandle = initEngine(modelPath, libPath, ortThreads, xnnThreads)
         return engineHandle != 0L
     }
 
     fun handle(): Long = engineHandle
+
+    @Synchronized
+    fun shutdown() {
+        if (engineHandle != 0L) {
+            close(engineHandle)
+            engineHandle = 0
+        }
+    }
 }

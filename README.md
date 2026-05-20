@@ -24,28 +24,31 @@ thread on weak SoCs. This rewrite flips it:
 See `rust/src/lib.rs` for the JNI surface and `rust/src/pipeline/*.rs`
 for the text pipeline modules.
 
-## Status: MVP scaffold
+## Status: MVP playback
 
 What works right now:
 
 * App compiles (CI green).
-* Native library loads from `libsupertonic_rust.so`.
-* Text pipeline runs a small built-in ё-restoration table (28 starter
-  pairs covering common test words: елка, веревка, мед, удивлен,
-  Аксёнов, ...).
-* JNI bridge surfaces `processText(text)` — the new diagnostic API
-  showing exactly what reaches the engine.
+* On first launch the app downloads the Supertonic 3 model bundle
+  (~398 MB) from Hugging Face and the Russian accent dictionary from
+  `davnozdu/supertonic-dictionaries` releases.
+* ORT engine (4 ONNX sessions, XNNPACK execution provider) loads on
+  boot, then synthesises Russian via the `synthesize` JNI call.
+* Returned PCM (16-bit LE mono, model's native sample rate) is played
+  through `AudioTrack` (MODE_STREAM).
+* Text pipeline runs a built-in ё-restoration starter table before
+  text reaches the model.
 
 What's *not* there yet:
 
-* ORT engine integration (synthesise returns empty PCM).
 * Full ~58K-entry yoficator table (currently only the starter set).
-* Memory-mapped accent dictionary reader.
+* Memory-mapped accent dictionary reader (.sacc).
 * Russian number normaliser.
-* Voice style loading + cache.
-* In-app playback UI (the screen has the controls; pressing
-  Synthesize today only runs the text pipeline).
-* Asset downloader actually populating `filesDir`.
+* Streaming playback (today the UI waits for the full sentence).
+* TTS-Service integration (system Settings → TTS engine is registered
+  but the service still calls into the pipeline-only path).
+* Voice picker UI (we hard-code F3 for now).
+* Cancellation / progress surface in the UI.
 
 These ship in subsequent iterations.
 
