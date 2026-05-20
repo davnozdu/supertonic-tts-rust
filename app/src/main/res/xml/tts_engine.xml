@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Marks this service as a TTS engine. The settingsActivity attribute
+    points Android to our MainActivity when the user taps "settings" next
+    to our engine name in system TTS preferences.
+-->
+<tts-engine xmlns:android="http://schemas.android.com/apk/res/android"
+    android:settingsActivity="com.davnozdu.supertonicrust.MainActivity" />

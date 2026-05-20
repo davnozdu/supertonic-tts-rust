@@ -1,0 +1,30 @@
+<resources>
+    <string name="app_name">Supertonic Rust</string>
+    <string name="app_label_short">SupertonicRust</string>
+
+    <!-- Main screen -->
+    <string name="default_input_text">Привет, мир. Это новая версия Supertonic TTS с обработкой текста на Rust.</string>
+    <string name="input_label">Текст</string>
+    <string name="speed_label">Скорость</string>
+    <string name="quality_label">Качество</string>
+    <string name="quality_hint">Рекомендуется: 3 для слабых телефонов (CPU до 2 ГГц), 4-5 для среднего класса, 6-7 для флагманов. Выше — лучше интонация, но дольше до первого слова.</string>
+    <string name="voice_label">Голос</string>
+    <string name="synthesize_button">Озвучить</string>
+    <string name="stop_button">Стоп</string>
+
+    <!-- Asset download -->
+    <string name="assets_downloading">Загрузка ресурсов: %1$s</string>
+    <string name="assets_progress_fmt">%1$.1f / %2$.1f МБ</string>
+    <string name="assets_ready">Готово к работе</string>
+    <string name="assets_failed">Не удалось скачать: %1$s</string>
+    <string name="retry">Повторить</string>
+
+    <!-- Engine status -->
+    <string name="engine_loading">Инициализация движка…</string>
+    <string name="engine_ready">Движок готов</string>
+    <string name="engine_failed">Ошибка инициализации движка</string>
+
+    <!-- Toggles -->
+    <string name="yo_restoration_label">Восстанавливать букву ё</string>
+    <string name="yo_restoration_desc">Автоматически приводить «елка» → «ёлка», «удивлен» → «удивлён» и т. п. до того, как текст попадёт в движок. По умолчанию включено.</string>
+</resources>

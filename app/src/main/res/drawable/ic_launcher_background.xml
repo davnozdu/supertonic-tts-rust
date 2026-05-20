@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Solid teal background for the adaptive icon. Distinct from the original
+    Supertonic icon's color palette so users can tell the two apps apart
+    at a glance in their launcher.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#0B7A6B" />
+</shape>

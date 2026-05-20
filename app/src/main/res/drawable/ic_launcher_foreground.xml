@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Foreground for the adaptive icon: a stylized speech-wave glyph with
+    three concentric arcs of increasing radius, suggesting audio output.
+    Designed within the 72×72 dp safe zone of the 108×108 dp canvas.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Stylized "speaker" cone on the left -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 36,42 L 36,66 L 46,66 L 58,76 L 58,32 L 46,42 Z" />
+
+    <!-- Three soundwave arcs of growing radius -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M 66,46 Q 70,54 66,62" />
+
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M 72,40 Q 80,54 72,68" />
+
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M 78,34 Q 90,54 78,74" />
+</vector>

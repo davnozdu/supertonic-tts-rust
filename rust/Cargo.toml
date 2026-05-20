@@ -1,0 +1,51 @@
+[package]
+name = "supertonic-rust"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = []
+xnnpack = ["ort/xnnpack"]
+
+[dependencies]
+# ONNX Runtime — pulled in but feature-gated; MVP focuses on text pipeline
+# first, engine integration lands in the next step.
+ort = { version = "2.0.0-rc.11", features = ["load-dynamic", "ndarray", "xnnpack"] }
+ndarray = { version = "0.17.2", features = ["rayon"] }
+rand = "0.8"
+rand_distr = "0.4"
+rayon = "1.10"
+
+# Audio (PCM packing helpers etc.)
+hound = "3.5"
+
+# Serialization (voice style JSON, lexicon)
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error handling
+anyhow = "1.0"
+
+# Memory-mapped file access for .sacc dictionary
+memmap2 = "0.9"
+
+# Unicode + regex (kept minimal — most of our text pipeline avoids regex
+# altogether and operates on chars directly for speed)
+unicode-normalization = "0.1"
+regex = "1.10"
+
+# Android JNI
+jni = "0.21"
+android_logger = "0.13"
+log = "0.4"
+once_cell = "1.19"
+
+[lib]
+name = "supertonic_rust"
+crate-type = ["cdylib"]
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true
