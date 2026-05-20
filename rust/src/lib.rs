@@ -160,7 +160,8 @@ pub extern "system" fn Java_com_davnozdu_supertonicrust_SupertonicRust_initEngin
 #[no_mangle]
 pub extern "system" fn Java_com_davnozdu_supertonicrust_SupertonicRust_synthesize(
     mut env: JNIEnv,
-    instance: JObject,
+    _class: JClass,
+    callback: JObject,
     ptr: jlong,
     text: JString,
     lang: JString,
@@ -220,7 +221,7 @@ pub extern "system" fn Java_com_davnozdu_supertonicrust_SupertonicRust_synthesiz
         |curr, total, audio_chunk| {
             // Check for cancellation via the Kotlin callback object.
             let is_cancelled = env
-                .call_method(&instance, "isCancelled", "()Z", &[])
+                .call_method(&callback, "isCancelled", "()Z", &[])
                 .ok()
                 .and_then(|v| v.z().ok())
                 .unwrap_or(false);
@@ -244,7 +245,7 @@ pub extern "system" fn Java_com_davnozdu_supertonicrust_SupertonicRust_synthesiz
                 .unwrap();
 
                 let _ = env.call_method(
-                    &instance,
+                    &callback,
                     "notifyAudioChunk",
                     "([B)V",
                     &[JValue::Object(&output)],
@@ -257,7 +258,7 @@ pub extern "system" fn Java_com_davnozdu_supertonicrust_SupertonicRust_synthesiz
                 || last_progress_call.elapsed().as_millis() > 100
             {
                 let _ = env.call_method(
-                    &instance,
+                    &callback,
                     "notifyProgress",
                     "(II)V",
                     &[JValue::Int(curr as i32), JValue::Int(total as i32)],
