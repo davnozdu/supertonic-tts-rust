@@ -17,13 +17,6 @@ cargo {
     targets = ["arm64", "arm", "x86", "x86_64"]
     profile = "release"
     pythonCommand = "python"
-    // Forbid Cargo from quietly bumping dependency versions during a CI
-    // run. The committed Cargo.lock pins ort's transitive deps to the
-    // exact versions that compile against ort 2.0.0-rc.11; without
-    // --locked, Cargo will regenerate the lockfile and pull in a fresher
-    // anyhow whose Send/Sync requirements no longer match ort's
-    // !Send !Sync error types.
-    extraCargoBuildArguments = ["--locked"]
 
     // Robustly find rustc/cargo across CI / dev / F-Droid environments.
     def home = System.getenv("HOME")

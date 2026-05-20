@@ -23,8 +23,13 @@ hound = "3.5"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
-# Error handling
-anyhow = "1.0"
+# Error handling. Pinned to the exact version that compiles against
+# ort 2.0.0-rc.11 — fresher anyhow patch releases tighten Send/Sync
+# trait bounds in a way that conflicts with ort's !Send error types,
+# so `?` no longer converts them. Without this pin Cargo silently
+# picks the latest 1.0.x release on every CI run and the build breaks
+# whenever a new anyhow patch lands.
+anyhow = "=1.0.100"
 
 # Unicode + regex (kept minimal — most of our text pipeline avoids regex
 # altogether and operates on chars directly for speed)
