@@ -26,9 +26,6 @@ serde_json = "1.0"
 # Error handling
 anyhow = "1.0"
 
-# Memory-mapped file access for .sacc dictionary
-memmap2 = "0.9"
-
 # Unicode + regex (kept minimal — most of our text pipeline avoids regex
 # altogether and operates on chars directly for speed)
 unicode-normalization = "0.1"
