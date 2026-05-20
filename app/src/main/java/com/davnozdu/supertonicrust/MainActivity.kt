@@ -6,7 +6,6 @@ import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioTrack
 import android.os.Bundle
-import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -114,13 +113,27 @@ private fun MainScreen() {
             BootStatusCard(bootState)
 
             // Open the system TTS engine picker so the user can set us
-            // as default in one tap from inside the app.
+            // as default in one tap from inside the app. The intent
+            // action is the well-known private string Settings uses for
+            // TTS preferences — Android doesn't expose a public
+            // constant for it, so the literal is the canonical path.
             OutlinedButton(
                 onClick = {
-                    context.startActivity(
-                        Intent(Settings.ACTION_TTS_SETTINGS)
-                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    )
+                    val intent = Intent("com.android.settings.TTS_SETTINGS")
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    try {
+                        context.startActivity(intent)
+                    } catch (_: Throwable) {
+                        // Fallback: take the user to the language &
+                        // input root if the OEM stripped the TTS
+                        // shortcut.
+                        try {
+                            context.startActivity(
+                                Intent(android.provider.Settings.ACTION_INPUT_METHOD_SETTINGS)
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            )
+                        } catch (_: Throwable) {}
+                    }
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
