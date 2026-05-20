@@ -11,7 +11,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 
@@ -43,8 +42,8 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun MainScreen() {
-    val ctx = LocalContext.current
-    var text by remember { mutableStateOf(stringResource(R.string.default_input_text)) }
+    val defaultText = stringResource(R.string.default_input_text)
+    var text by remember { mutableStateOf(defaultText) }
     var speed by remember { mutableFloatStateOf(1.0f) }
     var quality by remember { mutableIntStateOf(5) }
     var processed by remember { mutableStateOf("") }
