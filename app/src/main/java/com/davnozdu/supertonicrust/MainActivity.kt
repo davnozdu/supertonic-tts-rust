@@ -1,10 +1,12 @@
 package com.davnozdu.supertonicrust
 
+import android.content.Intent
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioTrack
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -16,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.davnozdu.supertonicrust.accent.AccentDictionaryManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -27,12 +30,15 @@ import java.io.File
  * Flow on first launch:
  *   1. Show progress card while AssetDownloader pulls the model bundle
  *      (~398 MB) and the .sacc accent dictionary.
- *   2. Once assets are on disk, initialise the engine (ORT sessions).
+ *   2. Once assets are on disk, initialise the engine (ORT sessions)
+ *      and load the accent dictionary mmap.
  *   3. Enable the synthesize button.
  *
- * The "Озвучить" button submits the text to the Rust pipeline + ORT,
- * then plays the resulting PCM via AudioTrack at the engine's reported
- * sample rate (typically 24 kHz).
+ * Pipeline on "Озвучить":
+ *   AccentDictionaryManager.apply (Kotlin mmap .sacc — стресс + ё)
+ *   → SupertonicRust.processText (Rust pipeline)
+ *   → SupertonicRust.synthesize (Rust ORT)
+ *   → AudioTrack
  */
 class MainActivity : ComponentActivity() {
 
@@ -62,6 +68,12 @@ private sealed interface BootState {
     data class Failed(val message: String) : BootState
 }
 
+private val ALL_VOICES = listOf(
+    "F1", "F2", "F3", "F4", "F5",
+    "M1", "M2", "M3", "M4", "M5",
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MainScreen() {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -74,6 +86,8 @@ private fun MainScreen() {
     var quality by remember { mutableIntStateOf(5) }
     var synthesising by remember { mutableStateOf(false) }
     var lastError by remember { mutableStateOf("") }
+    var voiceTag by remember { mutableStateOf("F3") }
+    var voiceMenuOpen by remember { mutableStateOf(false) }
     val nativeVersion = remember { SupertonicRust.nativeVersion() }
 
     LaunchedEffect(Unit) {
@@ -99,6 +113,20 @@ private fun MainScreen() {
 
             BootStatusCard(bootState)
 
+            // Open the system TTS engine picker so the user can set us
+            // as default in one tap from inside the app.
+            OutlinedButton(
+                onClick = {
+                    context.startActivity(
+                        Intent(Settings.ACTION_TTS_SETTINGS)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(stringResource(R.string.open_tts_settings))
+            }
+
             Text(stringResource(R.string.input_label), style = MaterialTheme.typography.labelLarge)
             OutlinedTextField(
                 value = text,
@@ -106,6 +134,39 @@ private fun MainScreen() {
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 3
             )
+
+            // Voice picker — exposed-dropdown menu of F1..F5 / M1..M5.
+            ExposedDropdownMenuBox(
+                expanded = voiceMenuOpen,
+                onExpandedChange = { voiceMenuOpen = it }
+            ) {
+                OutlinedTextField(
+                    value = "ru-supertonic-$voiceTag",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text(stringResource(R.string.voice_label)) },
+                    trailingIcon = {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = voiceMenuOpen)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor()
+                )
+                ExposedDropdownMenu(
+                    expanded = voiceMenuOpen,
+                    onDismissRequest = { voiceMenuOpen = false }
+                ) {
+                    ALL_VOICES.forEach { tag ->
+                        DropdownMenuItem(
+                            text = { Text("ru-supertonic-$tag") },
+                            onClick = {
+                                voiceTag = tag
+                                voiceMenuOpen = false
+                            }
+                        )
+                    }
+                }
+            }
 
             Text("${stringResource(R.string.speed_label)}: ${"%.2fx".format(speed)}")
             Slider(value = speed, onValueChange = { speed = it }, valueRange = 0.7f..1.5f)
@@ -131,10 +192,11 @@ private fun MainScreen() {
                     scope.launch {
                         try {
                             withContext(Dispatchers.IO) {
-                                val processed = SupertonicRust.processText(text)
+                                val withStress = AccentDictionaryManager.apply(text)
+                                val processed = SupertonicRust.processText(withStress)
                                 val voicePath = File(
                                     context.filesDir,
-                                    "${AssetDownloader.MODEL_DIR}/voice_styles/F3.json"
+                                    "${AssetDownloader.MODEL_DIR}/voice_styles/$voiceTag.json"
                                 ).absolutePath
                                 val pcm = SupertonicSynthesisCallback().runSynthesis(
                                     processed = processed,
@@ -291,8 +353,10 @@ private suspend fun bootAndInit(
         return
     }
 
-    val dictPath = File(context.filesDir, AssetDownloader.ACCENT_DICT_NAME).absolutePath
-    SupertonicRust.loadAccentDictionary(dictPath)
+    // Kick off the mmap of the accent dictionary — the lookup is the
+    // one and only source of stress marks + ё-restoration in the
+    // pipeline now.
+    AccentDictionaryManager.load(context)
 
     onState(BootState.Ready)
 }
@@ -308,14 +372,10 @@ class SupertonicSynthesisCallback {
     fun isCancelled(): Boolean = cancelled
 
     fun notifyAudioChunk(pcm: ByteArray) {
-        // Streaming not wired to AudioTrack yet — playback uses the bulk
-        // PCM returned by synthesize() below. Hook for future incremental
-        // playback that doesn't wait for the whole sentence to finish.
         if (pcm.isEmpty()) return
     }
 
     fun notifyProgress(current: Int, total: Int) {
-        // Future: surface this into Compose state.
         if (current > total) return
     }
 
@@ -360,8 +420,6 @@ private fun playPcm(pcm: ByteArray, sampleRate: Int) {
         .build()
     track.play()
     track.write(pcm, 0, pcm.size, AudioTrack.WRITE_BLOCKING)
-    // Wait for the queued samples to actually finish playing — write()
-    // returns once the buffer is queued, not once it's played out.
     val frames = pcm.size / 2
     val durationMs = (frames.toLong() * 1000L) / sampleRate
     try {

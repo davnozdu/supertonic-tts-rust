@@ -217,7 +217,12 @@ pub extern "system" fn Java_com_davnozdu_supertonicrust_SupertonicRust_synthesiz
         &style,
         steps as usize,
         speed,
-        0.02,
+        // Silence between chunks inside one synthesize call. The Rust
+        // chunker splits long input on sentence and paragraph
+        // boundaries; 0.15 s is a natural breath that matches the
+        // upstream PlaybackService's inter-sentence pause (~80 ms) plus
+        // a paragraph-friendly cushion.
+        0.15,
         |curr, total, audio_chunk| {
             // Check for cancellation via the Kotlin callback object.
             let is_cancelled = env

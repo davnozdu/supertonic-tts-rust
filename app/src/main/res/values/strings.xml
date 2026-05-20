@@ -24,6 +24,9 @@
     <string name="engine_ready">Движок готов</string>
     <string name="engine_failed">Ошибка инициализации движка</string>
 
+    <!-- System TTS integration -->
+    <string name="open_tts_settings">Открыть настройки TTS Android</string>
+
     <!-- Toggles -->
     <string name="yo_restoration_label">Восстанавливать букву ё</string>
     <string name="yo_restoration_desc">Автоматически приводить «елка» → «ёлка», «удивлен» → «удивлён» и т. п. до того, как текст попадёт в движок. По умолчанию включено.</string>

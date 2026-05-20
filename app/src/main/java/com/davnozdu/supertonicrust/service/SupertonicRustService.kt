@@ -9,6 +9,7 @@ import android.speech.tts.Voice
 import android.util.Log
 import com.davnozdu.supertonicrust.AssetDownloader
 import com.davnozdu.supertonicrust.SupertonicRust
+import com.davnozdu.supertonicrust.accent.AccentDictionaryManager
 import java.io.File
 import java.util.Locale
 
@@ -39,6 +40,11 @@ class SupertonicRustService : TextToSpeechService() {
         // 5-8 second ORT session-build cost while Android is impatiently
         // waiting for audio.
         ensureEngine(logFailure = false)
+        // Kick off the accent dictionary mmap in parallel. apply() is a
+        // no-op until the loader thread finishes, so the first request
+        // may go unstressed, but every subsequent one is properly
+        // marked.
+        AccentDictionaryManager.load(this)
     }
 
     override fun onIsLanguageAvailable(lang: String?, country: String?, variant: String?): Int {
@@ -115,11 +121,21 @@ class SupertonicRustService : TextToSpeechService() {
             return
         }
 
+        // Apply stress marks + ё restoration from the .sacc dictionary
+        // first, then hand the result to the Rust text pipeline. Wrap
+        // both in try/catch so a malformed dictionary entry doesn't
+        // bring the synthesis down.
+        val withStress = try {
+            AccentDictionaryManager.apply(raw)
+        } catch (t: Throwable) {
+            Log.e(TAG, "AccentDict apply failed: ${t.message}", t)
+            raw
+        }
         val processed = try {
-            SupertonicRust.processText(raw)
+            SupertonicRust.processText(withStress)
         } catch (t: Throwable) {
             Log.e(TAG, "processText failed: ${t.message}", t)
-            raw
+            withStress
         }
 
         val streamer = ChunkedStreamer(callback) { stopRequested }
